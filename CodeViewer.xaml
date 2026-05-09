@@ -1,0 +1,123 @@
+<UserControl x:Class="ClaudeCodeGUI.CodeViewer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{DynamicResource ThemeCodeBg}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>   <!-- Title bar -->
+            <RowDefinition Height="*"/>      <!-- Content area -->
+        </Grid.RowDefinitions>
+
+        <!-- Title bar: filename + mode buttons + close button -->
+        <Border Grid.Row="0" Background="{DynamicResource ThemeCodeHeaderBg}"
+                BorderBrush="{DynamicResource ThemeCodeBorder}" BorderThickness="0,0,0,1"
+                Padding="12,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Filename -->
+                <TextBlock x:Name="FileNameLabel" Grid.Column="0"
+                           Text=""
+                           Foreground="{DynamicResource ThemeTextPrimary}"
+                           FontSize="12" FontFamily="Consolas, Courier New"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"/>
+
+                <!-- Mode buttons -->
+                <Button x:Name="SourceModeBtn" Grid.Column="1" Content="源码" Click="SourceMode_Click"
+                        Visibility="Collapsed" Margin="0,0,4,0" Padding="8,4"/>
+                <Button x:Name="PreviewModeBtn" Grid.Column="2" Content="预览" Click="PreviewMode_Click"
+                        Visibility="Collapsed" Margin="0,0,4,0" Padding="8,4"/>
+
+                <!-- Close button -->
+                <Button x:Name="CloseBtn" Grid.Column="3"
+                        Content="x"
+                        Background="Transparent"
+                        Foreground="{DynamicResource ThemeTextMuted}"
+                        BorderThickness="0"
+                        Padding="8,2" FontSize="12"
+                        FontFamily="Segoe UI"
+                        Cursor="Hand"
+                        Click="CodeViewer_CloseRequested"
+                        ToolTip="关闭">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bg" Background="Transparent" CornerRadius="4">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bg" Property="Background" Value="{DynamicResource ThemeSurface3}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource ThemeError}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Content area: line numbers + code -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>   <!-- Line numbers column -->
+                <ColumnDefinition Width="*"/>      <!-- Code column -->
+            </Grid.ColumnDefinitions>
+
+            <!-- Line numbers -->
+            <ScrollViewer x:Name="LineNumbersScroller" Grid.Column="0"
+                          Background="{DynamicResource ThemeCodeBg}"
+                          VerticalScrollBarVisibility="Hidden"
+                          HorizontalScrollBarVisibility="Disabled"
+                          Width="50">
+                <TextBlock x:Name="LineNumbersText"
+                           Foreground="{DynamicResource ThemeCodeLineNum}"
+                           FontFamily="Consolas, Courier New" FontSize="14"
+                           LineHeight="22"
+                           TextAlignment="Right"
+                           Padding="8,8,8,8"
+                           VerticalAlignment="Top"/>
+            </ScrollViewer>
+
+            <!-- Code content -->
+            <ScrollViewer x:Name="CodeContentScroller" Grid.Column="1"
+                          Background="{DynamicResource ThemeCodeBg}"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto"
+                          ScrollChanged="CodeContent_ScrollChanged">
+                <TextBlock x:Name="CodeText"
+                           FontFamily="Consolas, Courier New" FontSize="14"
+                           LineHeight="22"
+                           TextWrapping="NoWrap"
+                           Padding="0,8,12,8"
+                           VerticalAlignment="Top"/>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- Large file warning (hidden by default) -->
+        <Border x:Name="LargeFileWarning" Grid.Row="0" Grid.RowSpan="2"
+                Background="{DynamicResource ThemeWarningBg}"
+                BorderBrush="{DynamicResource ThemeWarning}" BorderThickness="1"
+                CornerRadius="8" Padding="12,8" Margin="20"
+                Visibility="Collapsed"
+                HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel>
+                <TextBlock x:Name="WarningText"
+                           Text="文件过大，仅显示前500行"
+                           Foreground="{DynamicResource ThemeWarning}"
+                           FontSize="13" FontFamily="Segoe UI"
+                           HorizontalAlignment="Center"/>
+                <TextBlock x:Name="WarningDetail"
+                           Text=""
+                           Foreground="{DynamicResource ThemeTextSecondary}"
+                           FontSize="11" FontFamily="Segoe UI"
+                           HorizontalAlignment="Center" Margin="0,4,0,0"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>
