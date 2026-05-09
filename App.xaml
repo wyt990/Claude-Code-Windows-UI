@@ -1,0 +1,108 @@
+<Application x:Class="ClaudeCodeGUI.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:system="clr-namespace:System;assembly=mscorlib"
+             xmlns:local="clr-namespace:ClaudeCodeGUI"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/AppStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- ═══ 主题资源占位符 - 由 ThemeManager 动态填充 ═══ -->
+            <!-- 背景层级 -->
+            <SolidColorBrush x:Key="ThemeBackground" Color="#0D1117"/>
+            <SolidColorBrush x:Key="ThemeSurface1" Color="#161B22"/>
+            <SolidColorBrush x:Key="ThemeSurface2" Color="#1C1C1E"/>
+            <SolidColorBrush x:Key="ThemeSurface3" Color="#21262D"/>
+            <SolidColorBrush x:Key="ThemeSurface4" Color="#2C2C2E"/>
+
+            <!-- 边框层级 -->
+            <SolidColorBrush x:Key="ThemeBorder1" Color="#30363D"/>
+            <SolidColorBrush x:Key="ThemeBorder2" Color="#3A3A3C"/>
+            <SolidColorBrush x:Key="ThemeBorder3" Color="#484F58"/>
+
+            <!-- 文字层级 -->
+            <SolidColorBrush x:Key="ThemeTextPrimary" Color="#E8E8E8"/>
+            <SolidColorBrush x:Key="ThemeTextSecondary" Color="#9CA3AF"/>
+            <SolidColorBrush x:Key="ThemeTextMuted" Color="#6B7280"/>
+            <SolidColorBrush x:Key="ThemeTextDisabled" Color="#484F58"/>
+
+            <!-- 功能颜色 -->
+            <SolidColorBrush x:Key="ThemeAccent" Color="#3B82F6"/>
+            <SolidColorBrush x:Key="ThemeAccentHover" Color="#60A5FA"/>
+            <SolidColorBrush x:Key="ThemeSuccess" Color="#22C55E"/>
+            <SolidColorBrush x:Key="ThemeWarning" Color="#F59E0B"/>
+            <SolidColorBrush x:Key="ThemeError" Color="#EF4444"/>
+            <SolidColorBrush x:Key="ThemeInfo" Color="#06B6D4"/>
+
+            <!-- 特殊颜色 -->
+            <SolidColorBrush x:Key="ThemeBrand" Color="#FF6B35"/>
+            <SolidColorBrush x:Key="ThemeUserBg" Color="#0A1F38"/>
+            <SolidColorBrush x:Key="ThemeAssistantBg" Color="#1C1C1E"/>
+            <SolidColorBrush x:Key="ThemeSkillChipBg" Color="#0A1F35"/>
+            <SolidColorBrush x:Key="ThemeSkillChipText" Color="#3B82F6"/>
+
+            <!-- 功能色背景 -->
+            <SolidColorBrush x:Key="ThemeSuccessBg" Color="#1A3A1A"/>
+            <SolidColorBrush x:Key="ThemeErrorBg" Color="#3A1A1A"/>
+            <SolidColorBrush x:Key="ThemeWarningBg" Color="#3A3A1A"/>
+
+            <!-- 窗口控制 -->
+            <SolidColorBrush x:Key="ThemeWindowBtnBg" Color="Transparent"/>
+            <SolidColorBrush x:Key="ThemeWindowBtnBgHover" Color="#2C2C2E"/>
+            <SolidColorBrush x:Key="ThemeWindowBtnCloseHover" Color="#3A1A1A"/>
+
+            <!-- 滚动条 -->
+            <SolidColorBrush x:Key="ThemeScrollBarThumb" Color="#3A3A3C"/>
+            <SolidColorBrush x:Key="ThemeScrollBarThumbHover" Color="#6B7280"/>
+
+            <!-- 输入框 -->
+            <SolidColorBrush x:Key="ThemeInputBorder" Color="#30363D"/>
+            <SolidColorBrush x:Key="ThemeInputBorderFocus" Color="#3B82F6"/>
+            <SolidColorBrush x:Key="ThemeInputBg" Color="#161B22"/>
+
+            <!-- ═══ 间距系统 ═══ -->
+            <system:Double x:Key="SpacingXS">2</system:Double>
+            <system:Double x:Key="SpacingSM">4</system:Double>
+            <system:Double x:Key="SpacingMD">8</system:Double>
+            <system:Double x:Key="SpacingLG">12</system:Double>
+            <system:Double x:Key="SpacingXL">16</system:Double>
+            <system:Double x:Key="Spacing2XL">24</system:Double>
+            <system:Double x:Key="Spacing3XL">32</system:Double>
+
+            <!-- ═══ 尺寸系统 ═══ -->
+            <system:Double x:Key="SizeWindowBtnWidth">44</system:Double>
+            <system:Double x:Key="SizeWindowBtnHeight">32</system:Double>
+            <system:Double x:Key="SizeToolbarBtnHeight">32</system:Double>
+            <system:Double x:Key="SizeInputHeight">48</system:Double>
+            <system:Double x:Key="SizeSendBtnHeight">48</system:Double>
+            <system:Double x:Key="SizeSidebarIcon">28</system:Double>
+
+            <!-- ═══ 圆角系统 ═══ -->
+            <CornerRadius x:Key="RadiusSM">4</CornerRadius>
+            <CornerRadius x:Key="RadiusMD">8</CornerRadius>
+            <CornerRadius x:Key="RadiusLG">10</CornerRadius>
+            <CornerRadius x:Key="RadiusXL">12</CornerRadius>
+
+            <!-- ═══ 动画时长 ═══ -->
+            <Duration x:Key="AnimFast">0:0:0.15</Duration>
+            <Duration x:Key="AnimNormal">0:0:0.2</Duration>
+            <Duration x:Key="AnimSlow">0:0:0.3</Duration>
+
+            <!-- ═══ WindowChrome 配置：消除顶部空白边距 ═══ -->
+            <WindowChrome x:Key="CustomWindowChrome"
+                           CaptionHeight="0"
+                           ResizeBorderThickness="6"
+                           CornerRadius="0"
+                           GlassFrameThickness="0"
+                           UseAeroCaptionButtons="False"/>
+
+            <!-- Converters -->
+            <local:TaskStatusToColorConverter x:Key="TaskStatusToColorConverter"/>
+            <local:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

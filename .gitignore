@@ -1,0 +1,20 @@
+# Build outputs
+bin/
+obj/
+publish/
+
+# Visual Studio
+.vs/
+
+# Build files
+*.exe
+*.dll
+*.pdb
+*.cache
+
+# User-specific files
+*.user
+*.suo
+
+# Wolf context
+.wolf/
