@@ -21,6 +21,7 @@ public partial class CodeViewer : UserControl
     private int? _highlightLine;
     private int _totalLines;
     private bool _isPartialDisplay;
+        private TextBlock LanguageLabel = new TextBlock { Visibility = Visibility.Collapsed };
 
         // Markdown preview components
         private WebBrowser? _markdownView; // 使用WebBrowser控件渲染Markdown
@@ -439,7 +440,7 @@ public partial class CodeViewer : UserControl
                 SourceModeBtn.Background = H("#0A84FF"); // 强调色
                 PreviewModeBtn.Background = Brushes.Transparent;
                 CodeContentScroller.Visibility = Visibility.Visible;
-                _markdownView?.Visibility = Visibility.Collapsed;
+                _markdownView.Visibility = Visibility.Collapsed;
             }
         }
 

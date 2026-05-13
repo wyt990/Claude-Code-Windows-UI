@@ -35,6 +35,8 @@ public class EventBus
     public event EventHandler<ResultEvent>? ResultReceived;
     /// <summary>消息开始</summary>
     public event EventHandler<MessageStartEvent>? MessageStarted;
+    /// <summary>打开代码查看器</summary>
+    public event EventHandler<(string FilePath, int? LineNumber)>? OpenCodeViewerRequested;
 
     // ── 发布方法 ─────────────────────────────────────────────
 

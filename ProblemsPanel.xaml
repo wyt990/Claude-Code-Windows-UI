@@ -1,0 +1,119 @@
+<UserControl x:Class="ClaudeCodeGUI.ProblemsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:ClaudeCodeGUI">
+    <Grid Margin="4">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Toolbar -->
+        <Border Grid.Row="0"
+                Background="Transparent"
+                Padding="4,4,4,6">
+            <StackPanel Orientation="Horizontal">
+                <ComboBox x:Name="FilterCombo"
+                          SelectedIndex="0"
+                          Width="80"
+                          Height="24"
+                          FontSize="12"
+                          Foreground="{DynamicResource ThemeTextPrimary}"
+                          Background="{DynamicResource ThemeInputBg}"
+                          BorderBrush="{DynamicResource ThemeInputBorder}"
+                          SelectionChanged="FilterCombo_SelectionChanged">
+                    <ComboBoxItem Content="All" />
+                    <ComboBoxItem Content="Errors" />
+                    <ComboBoxItem Content="Warnings" />
+                </ComboBox>
+                <Button x:Name="RefreshButton"
+                        Content="\u21bb"
+                        Width="28"
+                        Height="24"
+                        Margin="6,0,0,0"
+                        FontSize="14"
+                        Background="{DynamicResource ThemeSurface2}"
+                        Foreground="{DynamicResource ThemeTextSecondary}"
+                        BorderBrush="{DynamicResource ThemeBorder1}"
+                        BorderThickness="1"
+                        Click="RefreshButton_Click" />
+                <Button x:Name="ClearButton"
+                        Content="\u2716"
+                        Width="28"
+                        Height="24"
+                        Margin="4,0,0,0"
+                        FontSize="11"
+                        Background="{DynamicResource ThemeSurface2}"
+                        Foreground="{DynamicResource ThemeTextSecondary}"
+                        BorderBrush="{DynamicResource ThemeBorder1}"
+                        BorderThickness="1"
+                        Click="ClearButton_Click" />
+                <TextBlock x:Name="CountText"
+                           Text="0 problems"
+                           Foreground="{DynamicResource ThemeTextMuted}"
+                           FontSize="11"
+                           VerticalAlignment="Center"
+                           Margin="10,0,0,0" />
+            </StackPanel>
+        </Border>
+
+        <!-- Problem list -->
+        <ScrollViewer Grid.Row="1"
+                      Background="Transparent"
+                      VerticalScrollBarVisibility="Auto">
+            <ListView x:Name="ProblemListView"
+                      Background="Transparent"
+                      BorderThickness="0"
+                      MouseDoubleClick="ProblemListView_MouseDoubleClick">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Padding="6,4"
+                                Margin="0,0,0,1"
+                                CornerRadius="3"
+                                Background="Transparent">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource ThemeSurface3}" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding Icon}"
+                                           Foreground="{Binding SeverityColor}"
+                                           FontSize="14"
+                                           FontWeight="Bold"
+                                           Margin="0,0,6,0"
+                                           VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Orientation="Vertical">
+                                    <TextBlock Text="{Binding Message}"
+                                               Foreground="{DynamicResource ThemeTextPrimary}"
+                                               FontSize="12"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Location}"
+                                               Foreground="{DynamicResource ThemeTextMuted}"
+                                               FontSize="10"
+                                               Margin="0,1,0,0" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding Severity}"
+                                           Foreground="{DynamicResource ThemeTextMuted}"
+                                           FontSize="10"
+                                           VerticalAlignment="Center"
+                                           Margin="6,0,0,0" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

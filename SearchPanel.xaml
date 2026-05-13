@@ -1,0 +1,115 @@
+<UserControl x:Class="ClaudeCodeGUI.SearchPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:ClaudeCodeGUI">
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Search input -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource ThemeInputBg}"
+                BorderBrush="{DynamicResource ThemeInputBorder}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Margin="0,0,0,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="SearchTextBox"
+                         Grid.Column="0"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Foreground="{DynamicResource ThemeTextPrimary}"
+                         FontSize="13"
+                         Padding="8,6"
+                         TextChanged="SearchTextBox_TextChanged"
+                         KeyDown="SearchTextBox_KeyDown" />
+                <TextBlock Grid.Column="1"
+                           Text="\U0001f50d"
+                           FontSize="13"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0" />
+            </Grid>
+        </Border>
+
+        <!-- Options row -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
+            <CheckBox x:Name="MatchCaseCheckBox"
+                      Content="Aa"
+                      Foreground="{DynamicResource ThemeTextSecondary}"
+                      FontSize="12"
+                      Margin="0,0,12,0"
+                      Checked="SearchOptions_Changed"
+                      Unchecked="SearchOptions_Changed" />
+            <CheckBox x:Name="WholeWordCheckBox"
+                      Content="ab"
+                      Foreground="{DynamicResource ThemeTextSecondary}"
+                      FontSize="12"
+                      Checked="SearchOptions_Changed"
+                      Unchecked="SearchOptions_Changed" />
+            <TextBlock x:Name="StatusText"
+                       Text=""
+                       Foreground="{DynamicResource ThemeTextMuted}"
+                       FontSize="11"
+                       VerticalAlignment="Center"
+                       Margin="12,0,0,0" />
+        </StackPanel>
+
+        <!-- Results list -->
+        <ScrollViewer Grid.Row="2"
+                      Background="Transparent"
+                      VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="ResultsList"
+                          Background="Transparent"
+                          MouseDoubleClick="ResultsList_MouseDoubleClick">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="Transparent"
+                                Padding="6,4"
+                                Margin="0,0,0,2"
+                                CornerRadius="3">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource ThemeSurface3}" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel>
+                                <TextBlock Text="{Binding FilePath}"
+                                           Foreground="{DynamicResource ThemeAccent}"
+                                           FontSize="12"
+                                           TextTrimming="CharacterEllipsis" />
+                                <ItemsControl ItemsSource="{Binding Matches}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Margin="12,1,0,1">
+                                                <TextBlock Text="{Binding LineNumber, StringFormat='L{0}'}"
+                                                           Foreground="{DynamicResource ThemeTextMuted}"
+                                                           FontSize="11"
+                                                           FontFamily="Consolas"
+                                                           Margin="0,0,8,0" />
+                                                <TextBlock Text="{Binding Context}"
+                                                           Foreground="{DynamicResource ThemeTextSecondary}"
+                                                           FontSize="11"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

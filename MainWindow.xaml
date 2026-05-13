@@ -13,6 +13,17 @@
         AllowsTransparency="False"
         ResizeMode="CanResizeWithGrip"
         WindowChrome.WindowChrome="{StaticResource CustomWindowChrome}">
+    <Window.InputBindings>
+        <KeyBinding Command="{x:Static local:MainWindow.NewSessionCmd}" Key="N" Modifiers="Control"/>
+        <KeyBinding Command="{x:Static local:MainWindow.CloseTabCmd}" Key="W" Modifiers="Control"/>
+        <KeyBinding Command="{x:Static local:MainWindow.SwitchTabCmd}" Key="Tab" Modifiers="Control"/>
+        <KeyBinding Command="{x:Static local:MainWindow.QuickOpenCmd}" Key="P" Modifiers="Control"/>
+        <KeyBinding Command="{x:Static local:MainWindow.FindInChatCmd}" Key="F" Modifiers="Control"/>
+        <KeyBinding Command="{x:Static local:MainWindow.CommandPaletteCmd}" Key="P" Modifiers="Control+Shift"/>
+        <KeyBinding Command="{x:Static local:MainWindow.ExportSessionCmd}" Key="E" Modifiers="Control"/>
+        <KeyBinding Command="{x:Static local:MainWindow.OpenSettingsCmd}" Key="O" Modifiers="Control+Shift"/>
+        <KeyBinding Command="{x:Static local:MainWindow.ToggleTerminalCmd}" Key="Oem3" Modifiers="Control"/>
+    </Window.InputBindings>
 
 <!-- Styles moved to Themes/AppStyles.xaml -->
 
@@ -22,7 +33,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto" MaxHeight="600"/>
         </Grid.RowDefinitions>
 
         <!-- ══════════════ TITLE BAR (draggable, custom chrome) ══════════════ -->
@@ -297,12 +308,14 @@
             </Grid>
         </Border>
 
-        <!-- ══════════════ MAIN: SIDEBAR + CHAT ══════════════ -->
+        <!-- ══════════════ MAIN: SIDEBAR + CHAT + CODE VIEWER ══════════════ -->
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="230" MinWidth="170" MaxWidth="380"/>
                 <ColumnDefinition Width="1"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*" MinWidth="200"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto" MinWidth="200" MaxWidth="600"/>
             </Grid.ColumnDefinitions>
 
             <!-- ═══ SIDEBAR (SKILLS + PROJECTS) ═══ -->
@@ -320,6 +333,9 @@
                             Padding="14,11,10,11">
                         <Grid>
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
@@ -348,6 +364,39 @@
                                            Foreground="{DynamicResource ThemeTextMuted}"/>
                             </Border>
 
+                            <!-- Files tab button -->
+                            <Border x:Name="SidebarFilesTab" Grid.Column="2"
+                                    CornerRadius="6" Padding="10,5"
+                                    Background="Transparent"
+                                    Cursor="Hand"
+                                    MouseLeftButtonDown="SidebarTabFiles_Click">
+                                <TextBlock Text="文件"
+                                           FontSize="12" FontFamily="Segoe UI"
+                                           Foreground="{DynamicResource ThemeTextMuted}"/>
+                            </Border>
+
+                            <!-- Search tab button -->
+                            <Border x:Name="SidebarSearchTab" Grid.Column="3"
+                                    CornerRadius="6" Padding="10,5"
+                                    Background="Transparent"
+                                    Cursor="Hand"
+                                    MouseLeftButtonDown="SidebarTabSearch_Click">
+                                <TextBlock Text="搜索"
+                                           FontSize="12" FontFamily="Segoe UI"
+                                           Foreground="{DynamicResource ThemeTextMuted}"/>
+                            </Border>
+
+                            <!-- Problems tab button -->
+                            <Border x:Name="SidebarProblemsTab" Grid.Column="4"
+                                    CornerRadius="6" Padding="10,5"
+                                    Background="Transparent"
+                                    Cursor="Hand"
+                                    MouseLeftButtonDown="SidebarTabProblems_Click">
+                                <TextBlock Text="问题"
+                                           FontSize="12" FontFamily="Segoe UI"
+                                           Foreground="{DynamicResource ThemeTextMuted}"/>
+                            </Border>
+
                             <!-- Skills count badge -->
                             <TextBlock x:Name="SkillsCountLabel" Grid.Column="0"
                                        Foreground="{DynamicResource ThemeTextMuted}" FontSize="11"
@@ -355,10 +404,10 @@
                                        Margin="6,0,0,0" Visibility="Collapsed"/>
 
                             <!-- Spacer -->
-                            <Border Grid.Column="2"/>
+                            <Border Grid.Column="5"/>
 
                             <!-- Action buttons (contextual) -->
-                            <StackPanel Grid.Column="3" Orientation="Horizontal"
+                            <StackPanel Grid.Column="6" Orientation="Horizontal"
                                         x:Name="SidebarActions">
                                 <!-- #region Skills actions -->
                                 <Button x:Name="SkillAddBtn"
@@ -560,6 +609,21 @@
                         <Grid x:Name="ProjectsPanel" Visibility="Collapsed">
                             <local:ProjectSidebar x:Name="ProjectSidebarCtrl"/>
                         </Grid>
+
+                        <!-- ═══ Files panel ═══ -->
+                        <Grid x:Name="FilesPanel" Visibility="Collapsed">
+                            <local:FilesSidebar x:Name="FilesSidebarCtrl"/>
+                        </Grid>
+
+                        <!-- ═══ Search panel ═══ -->
+                        <Grid x:Name="SearchPanelGrid" Visibility="Collapsed">
+                            <local:SearchPanel x:Name="SearchPanelCtrl"/>
+                        </Grid>
+
+                        <!-- ═══ Problems panel ═══ -->
+                        <Grid x:Name="ProblemsPanelGrid" Visibility="Collapsed">
+                            <local:ProblemsPanel x:Name="ProblemsCtrl"/>
+                        </Grid>
                     </Grid>
                 </Grid>
             </Border>
@@ -755,6 +819,9 @@
                             <TextBox x:Name="InputBox"
                                      Style="{StaticResource InputStyle}"
                                      MinHeight="36" MaxHeight="140"
+                                     AllowDrop="True"
+                                     PreviewDragOver="InputBox_PreviewDragOver"
+                                     PreviewDrop="InputBox_PreviewDrop"
                                      PreviewKeyDown="InputBox_PreviewKeyDown"
                                      TextChanged="InputBox_TextChanged"
                                      GotFocus="InputBox_GotFocus"
@@ -911,24 +978,69 @@
                     </Grid>
                 </Border>
             </Grid>
+
+            <!-- Divider 2 -->
+            <Border Grid.Column="3" Background="{DynamicResource ThemeSurface3}"/>
+
+            <!-- ═══ Code Viewer Panel ═══ -->
+            <Grid x:Name="CodeViewerPanel" Grid.Column="4" Visibility="Collapsed"
+                  Background="{DynamicResource ThemeCodeBg}"
+                  MinWidth="200" MaxWidth="600" Width="300">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <local:CodeViewer x:Name="CodeViewerCtrl" CloseRequested="CodeViewer_CloseRequested"/>
+            </Grid>
         </Grid>
 
         <!-- ══════════════ STATUS BAR ══════════════ -->
-        <Border Grid.Row="3" Background="#141416"
+        <Border Grid.Row="3" Background="{DynamicResource ThemeSurface2}"
                 BorderBrush="{DynamicResource ThemeBorder1}" BorderThickness="0,1,0,0"
                 Padding="16,5">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock x:Name="StatusBar"
                            Text="点击「浏览」选择工作目录。"
                            Foreground="{DynamicResource ThemeTextMuted}" FontSize="11"
                            FontFamily="Segoe UI" VerticalAlignment="Center"/>
-                <TextBlock x:Name="TurnCounter" Grid.Column="1"
+                <TextBlock x:Name="ProjectPathLabel" Grid.Column="1"
+                           Text="" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11"
+                           FontFamily="Segoe UI" VerticalAlignment="Center" Margin="16,0,0,0"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="16,0,8,0">
+                    <TextBlock x:Name="GitBranchLabel" Text="" Foreground="{DynamicResource ThemeAccent}" FontSize="11" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="GitChangesLabel" Text="" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                    <TextBlock x:Name="ModelLabel" Text="" Foreground="{DynamicResource ThemeAccent}" FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    <TextBlock Text=" · " Foreground="{DynamicResource ThemeTextMuted}" FontSize="11" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="ModeLabel" Text="" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" VerticalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock x:Name="TurnCounter" Grid.Column="3"
                            Text="" Foreground="{DynamicResource ThemeTextMuted}" FontSize="11"
                            FontFamily="Segoe UI" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- ══════════════ TERMINAL PANEL ══════════════ -->
+        <Border x:Name="TerminalPanel" Grid.Row="4" Visibility="Collapsed"
+                Background="{DynamicResource ThemeCodeBg}" BorderBrush="{DynamicResource ThemeBorder1}" BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Border Grid.Row="0" Background="{DynamicResource ThemeSurface2}" Padding="12,6">
+                    <Grid>
+                        <TextBlock Text="终端" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
+                        <Button x:Name="TerminalCloseBtn" Content="✕" HorizontalAlignment="Right" Click="TerminalClose_Click" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource ThemeTextMuted}" Cursor="Hand"/>
+                    </Grid>
+                </Border>
+                <ScrollViewer Grid.Row="1" x:Name="TerminalContent" Background="{DynamicResource ThemeCodeBg}" Padding="8">
+                    <TextBlock x:Name="TerminalText" FontFamily="Consolas" FontSize="12" Foreground="{DynamicResource ThemeTextPrimary}" TextWrapping="Wrap"/>
+                </ScrollViewer>
             </Grid>
         </Border>
 

@@ -63,7 +63,7 @@
         </Border>
 
         <!-- Content area: line numbers + code -->
-        <Grid Grid.Row="1">
+        <Grid x:Name="ViewerContent" Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>   <!-- Line numbers column -->
                 <ColumnDefinition Width="*"/>      <!-- Code column -->

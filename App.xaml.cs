@@ -1,3 +1,4 @@
+using System;
 using System.Windows;
 using ClaudeCodeGUI.Themes;
 
@@ -7,6 +8,22 @@ namespace ClaudeCodeGUI
     {
         protected override void OnStartup(StartupEventArgs e)
         {
+            // 全局异常捕获
+            AppDomain.CurrentDomain.UnhandledException += (s, args) =>
+            {
+                var ex = args.ExceptionObject as Exception;
+                MessageBox.Show($"未处理 AppDomain 异常: {ex?.Message}\n\n{ex?.StackTrace}",
+                    "启动错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            };
+
+            DispatcherUnhandledException += (s, args) =>
+            {
+                var ex = args.Exception.InnerException ?? args.Exception;
+                MessageBox.Show($"未处理异常: {ex.Message}\n\n{ex.StackTrace}",
+                    "启动错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                args.Handled = true;
+            };
+
             // 初始化主题系统
             ThemeManager.Instance.ThemeChanged += OnThemeChanged;
             base.OnStartup(e);

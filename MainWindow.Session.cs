@@ -81,12 +81,45 @@ public partial class MainWindow : Window
                 ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    // ── Drag & Drop ───────────────────────────────────────
+    private void InputBox_PreviewDragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
+        else e.Effects = DragDropEffects.None;
+    }
+
+    private void InputBox_PreviewDrop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+        var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+        if (files.Length == 0) return;
+        var file = files[0];
+        var projectDir = _session.WorkingDirectory;
+        if (string.IsNullOrEmpty(projectDir) || !file.StartsWith(projectDir, StringComparison.OrdinalIgnoreCase))
+        {
+            StatusBar.Text = "只能拖入项目目录内的文件";
+            return;
+        }
+        var relativePath = file.Substring(projectDir.Length).TrimStart('\\', '/');
+        InputBox.Text += $" @{relativePath} ";
+        InputBox.CaretIndex = InputBox.Text.Length;
+        InputBox.Focus();
+        StatusBar.Text = $"已附加文件：{relativePath}";
+    }
+
     // ── Core run ──────────────────────────────────────────
     private async Task RunAsync()
     {
         if (_busy || !_ready || _claudeExe == null) return;
         string msg = InputBox.Text.Trim();
         if (string.IsNullOrEmpty(msg)) return;
+
+        // BUG FIX #4: SetBusy early to close race window
+        SetBusy(true);
 
         InputBox.Clear();
         AddUserBubble(msg);
@@ -102,7 +135,6 @@ public partial class MainWindow : Window
                 ImagePreviewThumb.Source = null;
             });
         }
-        SetBusy(true);
 
         _cts = new CancellationTokenSource();
         var tok = _cts.Token;
@@ -180,43 +212,16 @@ public partial class MainWindow : Window
             _job.StartInfo.Environment["FORCE_COLOR"] = "0";
             _job.Start();
 
+            // BUG FIX #5: sync process/CTS to active tab so context menu "Stop" works
+            if (_lastActiveTab != null)
+            {
+                _lastActiveTab.Job = _job;
+                _lastActiveTab.CTS = _cts;
+            }
+
             // 使用事件解析器流式读取 stdout
             var parser = new ClaudeEventParser();
             var eventBus = EventBus.Instance;
-
-            // 订阅事件：流式文本 -> 追加到 StreamingRenderer 缓冲区
-            EventHandler<TextDeltaEvent>? textHandler = null;
-            textHandler = (_, delta) =>
-            {
-                renderer?.AppendText(delta.Text);
-                if (!string.IsNullOrEmpty(delta.Text))
-                {
-                    _ = Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
-                        _lastOutputTime = DateTime.Now));
-                }
-            };
-            eventBus.TextDeltaReceived += textHandler;
-
-            // 订阅事件：消息结束 -> 刷新渲染器 + 标记流式完成
-            EventHandler<MessageStopEvent>? stopHandler = null;
-            stopHandler = (_, _) =>
-            {
-                renderer?.Flush();
-                FinalizeAssistantEntry(tb);
-            };
-            eventBus.MessageStopped += stopHandler;
-
-            // 订阅事件：result -> 更新 Token 用量
-            EventHandler<ResultEvent>? resultHandler = null;
-            resultHandler = (_, result) =>
-            {
-                var tracker = new TokenUsageTracker(_session);
-                tracker.UpdateFromResult(
-                    result.ContextWindow,
-                    result.InputTokens,
-                    result.OutputTokens);
-            };
-            eventBus.ResultReceived += resultHandler;
 
             // ── 工具事件跟踪状态 ──────────────────────────────
             string? currentToolId = null;
@@ -224,142 +229,164 @@ public partial class MainWindow : Window
             StringBuilder? currentToolInput = null;
             TimelineEntry? currentToolEntry = null;
 
-            // 订阅事件：工具块开始 -> 添加时间线条目
+            // BUG FIX #3: declare handlers outside try so finally can access them
+            EventHandler<TextDeltaEvent>? textHandler = null;
+            EventHandler<MessageStopEvent>? stopHandler = null;
+            EventHandler<ResultEvent>? resultHandler = null;
             EventHandler<ToolBlockStartEvent>? toolStartHandler = null;
-            toolStartHandler = (_, evt) =>
-            {
-                currentToolId = evt.ToolId;
-                currentToolName = evt.ToolName;
-                currentToolInput = new StringBuilder();
-
-                var status = _session.PermissionLevel == RuntimeMode.FullAccess
-                    ? ToolCallStatus.Running
-                    : ToolCallStatus.PendingApproval;
-                currentToolEntry = _sessionTabTimeline?.AddToolCall(evt.ToolName, evt.ToolId, status);
-            };
-            eventBus.ToolUseStarted += toolStartHandler;
-
-            // 订阅事件：工具输入增量 -> 累积 partial_json
             EventHandler<ToolInputDeltaEvent>? toolInputHandler = null;
-            toolInputHandler = (_, evt) =>
-            {
-                currentToolInput?.Append(evt.PartialJson);
-            };
-            eventBus.ToolInputDelta += toolInputHandler;
-
-            // 订阅事件：内容块结束 -> 审批 + stdin 写入
             EventHandler<ContentBlockStopEvent>? toolBlockHandler = null;
-            toolBlockHandler = (_, _) =>
+            EventHandler<ToolResultEvent>? toolResultHandler = null;
+
+            try
             {
-                if (currentToolId == null || currentToolEntry == null) return;
-
-                string inputJson = currentToolInput?.ToString() ?? "";
-                currentToolEntry.Text = inputJson;
-
-                bool approvedForTools = true;
-
-                // 非 FullAccess 模式需要审批或自动批准
-                if (_session.PermissionLevel != RuntimeMode.FullAccess)
+                textHandler = (_, delta) =>
                 {
-                    bool approved;
-
-                    // 检查工具是否已被允许（AllowAlways 功能）
-                    if (_session.IsToolAllowed(currentToolName ?? ""))
+                    renderer?.AppendText(delta.Text);
+                    if (!string.IsNullOrEmpty(delta.Text))
                     {
-                        approved = true;
+                        _ = Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
+                            _lastOutputTime = DateTime.Now));
                     }
-                    else if (_session.PermissionLevel == RuntimeMode.ApprovalRequired)
-                    {
-                        var dialog = new ApprovalDialog(
-                            this, currentToolName ?? "", "", inputJson);
-                        var dialogResult = dialog.ShowDialog();
+                };
+                eventBus.TextDeltaReceived += textHandler;
 
-                        if (dialogResult == true)
+                stopHandler = (_, _) =>
+                {
+                    renderer?.Flush();
+                    FinalizeAssistantEntry(tb);
+                };
+                eventBus.MessageStopped += stopHandler;
+
+                resultHandler = (_, result) =>
+                {
+                    var tracker = new TokenUsageTracker(_session);
+                    tracker.UpdateFromResult(
+                        result.ContextWindow,
+                        result.InputTokens,
+                        result.OutputTokens);
+                };
+                eventBus.ResultReceived += resultHandler;
+
+                toolStartHandler = (_, evt) =>
+                {
+                    currentToolId = evt.ToolId;
+                    currentToolName = evt.ToolName;
+                    currentToolInput = new StringBuilder();
+
+                    var status = _session.PermissionLevel == RuntimeMode.FullAccess
+                        ? ToolCallStatus.Running
+                        : ToolCallStatus.PendingApproval;
+                    currentToolEntry = _sessionTabTimeline?.AddToolCall(evt.ToolName, evt.ToolId, status);
+                };
+                eventBus.ToolUseStarted += toolStartHandler;
+
+                toolInputHandler = (_, evt) =>
+                {
+                    currentToolInput?.Append(evt.PartialJson);
+                };
+                eventBus.ToolInputDelta += toolInputHandler;
+
+                toolBlockHandler = (_, _) =>
+                {
+                    if (currentToolId == null || currentToolEntry == null) return;
+
+                    string inputJson = currentToolInput?.ToString() ?? "";
+                    currentToolEntry.Text = inputJson;
+
+                    bool approvedForTools = true;
+
+                    if (_session.PermissionLevel != RuntimeMode.FullAccess)
+                    {
+                        bool approved;
+
+                        if (_session.IsToolAllowed(currentToolName ?? ""))
                         {
-                            // 处理不同的审批结果
-                            switch (dialog.Result)
+                            approved = true;
+                        }
+                        else if (_session.PermissionLevel == RuntimeMode.ApprovalRequired)
+                        {
+                            var dialog = new ApprovalDialog(
+                                this, currentToolName ?? "", "", inputJson);
+                            var dialogResult = dialog.ShowDialog();
+
+                            if (dialogResult == true)
                             {
-                                case ApprovalResult.AllowAll:
-                                    // 全部允许：切换到 FullAccess 模式
-                                    _session.PermissionLevel = RuntimeMode.FullAccess;
-                                    approved = true;
-                                    break;
-                                case ApprovalResult.AllowAlways:
-                                    // 始终允许此工具：添加到允许列表
-                                    _session.AllowTool(currentToolName ?? "");
-                                    approved = true;
-                                    break;
-                                case ApprovalResult.Allow:
-                                    // 仅允许本次
-                                    approved = true;
-                                    break;
-                                default:
-                                    approved = false;
-                                    break;
+                                switch (dialog.Result)
+                                {
+                                    case ApprovalResult.AllowAll:
+                                        _session.PermissionLevel = RuntimeMode.FullAccess;
+                                        approved = true;
+                                        break;
+                                    case ApprovalResult.AllowAlways:
+                                        _session.AllowTool(currentToolName ?? "");
+                                        approved = true;
+                                        break;
+                                    case ApprovalResult.Allow:
+                                        approved = true;
+                                        break;
+                                    default:
+                                        approved = false;
+                                        break;
+                                }
+                            }
+                            else
+                            {
+                                approved = false;
                             }
                         }
                         else
                         {
-                            approved = false;
+                            approved = true;
+                        }
+
+                        approvedForTools = approved;
+
+                        try
+                        {
+                            _job?.StandardInput.WriteLine(approved ? "y" : "n");
+                        }
+                        catch { }
+
+                        currentToolEntry.ToolStatus = approved
+                            ? ToolCallStatus.Running
+                            : ToolCallStatus.Completed;
+                    }
+
+                    if (IsTodoWriteTool(currentToolName)
+                        && (_session.PermissionLevel == RuntimeMode.FullAccess || approvedForTools))
+                    {
+                        string jsonCopy = inputJson;
+                        _ = Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
+                            _session.ApplyTodoWriteFromJson(jsonCopy)));
+                    }
+
+                    currentToolId = null;
+                    currentToolName = null;
+                    currentToolInput = null;
+                    currentToolEntry = null;
+                };
+                eventBus.ToolBlockCompleted += toolBlockHandler;
+
+                toolResultHandler = (_, evt) =>
+                {
+                    if (_sessionTabTimeline == null) return;
+                    foreach (var e in _sessionTabTimeline.Entries)
+                    {
+                        if (e.Kind == TimelineEntryKind.ToolCall && e.ToolId == evt.ToolUseId)
+                        {
+                            e.ToolStatus = ToolCallStatus.Completed;
+                            if (!string.IsNullOrEmpty(evt.Content))
+                                e.Text = evt.Content.Length > 200
+                                    ? evt.Content[..200] + "…"
+                                    : evt.Content;
+                            break;
                         }
                     }
-                    else
-                    {
-                        approved = true;
-                    }
+                };
+                eventBus.ToolResultReceived += toolResultHandler;
 
-                    approvedForTools = approved;
-
-                    try
-                    {
-                        _job?.StandardInput.WriteLine(approved ? "y" : "n");
-                    }
-                    catch { /* 进程已结束，忽略 */ }
-
-                    currentToolEntry.ToolStatus = approved
-                        ? ToolCallStatus.Running
-                        : ToolCallStatus.Completed;
-                }
-
-                if (IsTodoWriteTool(currentToolName)
-                    && (_session.PermissionLevel == RuntimeMode.FullAccess || approvedForTools))
-                {
-                    string jsonCopy = inputJson;
-                    _ = Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
-                        _session.ApplyTodoWriteFromJson(jsonCopy)));
-                }
-
-                // 重置当前工具状态
-                currentToolId = null;
-                currentToolName = null;
-                currentToolInput = null;
-                currentToolEntry = null;
-            };
-            eventBus.ToolBlockCompleted += toolBlockHandler;
-
-            // 订阅事件：工具结果 -> 标记完成
-            EventHandler<ToolResultEvent>? toolResultHandler = null;
-            toolResultHandler = (_, evt) =>
-            {
-                if (_sessionTabTimeline == null) return;
-                foreach (var e in _sessionTabTimeline.Entries)
-                {
-                    if (e.Kind == TimelineEntryKind.ToolCall && e.ToolId == evt.ToolUseId)
-                    {
-                        e.ToolStatus = ToolCallStatus.Completed;
-                        if (!string.IsNullOrEmpty(evt.Content))
-                            e.Text = evt.Content.Length > 200
-                                ? evt.Content[..200] + "…"
-                                : evt.Content;
-                        break;
-                    }
-                }
-            };
-            eventBus.ToolResultReceived += toolResultHandler;
-
-            try
-            {
-                // 逐行读取并解析 stdout
+                // ── 逐行读取并解析 stdout ──
                 string? line;
                 while ((line = await _job.StandardOutput.ReadLineAsync()) != null)
                 {
@@ -376,26 +403,38 @@ public partial class MainWindow : Window
                     {
                         if (StreamParseLogWindow.ShouldAutoShow(lineEx))
                             StreamParseLogWindow.ShowDiagnostic(this, lineEx, line);
-                        throw;
+                        continue; // skip bad line instead of killing the conversation
                     }
                 }
 
-                // 读取 stderr（日志输出）
+                // ── 读取 stderr 日志输出 ──
+                var stderrBuilder = new StringBuilder();
                 await Task.Run(() =>
                 {
                     string? errLine;
                     while ((errLine = _job.StandardError.ReadLine()) != null)
                     {
                         if (tok.IsCancellationRequested) break;
-                        // stderr 可不处理或仅调试用
+                        lock (stderrBuilder)
+                            stderrBuilder.AppendLine(errLine);
                     }
                 }, tok);
 
                 await Task.Run(() => _job.WaitForExit(), tok);
+
+                // BUG FIX #2: show stderr output if any
+                string stderrText;
+                lock (stderrBuilder)
+                    stderrText = stderrBuilder.ToString();
+                if (!string.IsNullOrWhiteSpace(stderrText))
+                {
+                    tb.Text += $"\n── stderr ──\n{stderrText}";
+                    tb.Foreground = BrYellow;
+                }
             }
             finally
             {
-                // 取消订阅事件
+                // ── 取消订阅事件 ──
                 eventBus.TextDeltaReceived -= textHandler;
                 eventBus.MessageStopped -= stopHandler;
                 eventBus.ResultReceived -= resultHandler;

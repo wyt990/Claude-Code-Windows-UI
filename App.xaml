@@ -63,6 +63,41 @@
             <SolidColorBrush x:Key="ThemeInputBorderFocus" Color="#3B82F6"/>
             <SolidColorBrush x:Key="ThemeInputBg" Color="#161B22"/>
 
+            <!-- ═══ 代码块颜色 ═══ -->
+            <SolidColorBrush x:Key="ThemeCodeBg" Color="#0D1117"/>
+            <SolidColorBrush x:Key="ThemeCodeLineNum" Color="#484F58"/>
+            <SolidColorBrush x:Key="ThemeCodeHeaderBg" Color="#161B22"/>
+            <SolidColorBrush x:Key="ThemeCodeBorder" Color="#21262D"/>
+
+            <!-- ═══ 语法高亮 ═══ -->
+            <SolidColorBrush x:Key="SyntaxKeyword" Color="#569CD6"/>
+            <SolidColorBrush x:Key="SyntaxString" Color="#CE9178"/>
+            <SolidColorBrush x:Key="SyntaxComment" Color="#6A9955"/>
+            <SolidColorBrush x:Key="SyntaxNumber" Color="#B5CEA8"/>
+            <SolidColorBrush x:Key="SyntaxType" Color="#4EC9B0"/>
+            <SolidColorBrush x:Key="SyntaxMethod" Color="#DCDCAA"/>
+            <SolidColorBrush x:Key="SyntaxOperator" Color="#D4D4D4"/>
+
+            <!-- ═══ 工具调用 ═══ -->
+            <SolidColorBrush x:Key="ThemeToolCallBg" Color="#161B22"/>
+            <SolidColorBrush x:Key="ThemeToolCallBorder" Color="#30363D"/>
+            <SolidColorBrush x:Key="ThemeToolCallRunning" Color="#3B82F6"/>
+            <SolidColorBrush x:Key="ThemeToolCallPending" Color="#F59E0B"/>
+            <SolidColorBrush x:Key="ThemeToolCallDone" Color="#22C55E"/>
+
+            <!-- ═══ 气泡增强 ═══ -->
+            <SolidColorBrush x:Key="ThemeBubbleHeaderFg" Color="#E8E8E8"/>
+            <SolidColorBrush x:Key="ThemeBubbleTimeFg" Color="#6B7280"/>
+            <SolidColorBrush x:Key="ThemeBubbleAccentBorder" Color="#3B82F6"/>
+
+            <!-- ═══ 审批对话框 ═══ -->
+            <SolidColorBrush x:Key="ThemeApprovalBg" Color="#1C1C1E"/>
+            <SolidColorBrush x:Key="ThemeApprovalBorder" Color="#30363D"/>
+
+            <!-- ═══ 变更文件摘要 ═══ -->
+            <SolidColorBrush x:Key="ThemeDiffAdded" Color="#22C55E"/>
+            <SolidColorBrush x:Key="ThemeDiffRemoved" Color="#EF4444"/>
+
             <!-- ═══ 间距系统 ═══ -->
             <system:Double x:Key="SpacingXS">2</system:Double>
             <system:Double x:Key="SpacingSM">4</system:Double>

@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using ClaudeCodeGUI.Themes;
@@ -45,7 +46,7 @@ namespace ClaudeCodeGUI
         private List<string> _allModels = new();
 
         // ── Sidebar tab state ───────────────────────────────────
-        private bool _sidebarTabIsSkills = true;
+        private int _sidebarTabIndex = 0; // 0=技能, 1=项目, 2=文件, 3=搜索, 4=问题
 
         // ── Skills root ────────────────────────────────────────
         private string _skillsRoot = Path.Combine(
@@ -86,6 +87,18 @@ namespace ClaudeCodeGUI
         public MainWindow()
         {
             InitializeComponent();
+
+            // ── Command bindings ──
+            CommandBindings.Add(new CommandBinding(NewSessionCmd, NewSession_Execute, NewSession_CanExecute));
+            CommandBindings.Add(new CommandBinding(CloseTabCmd, CloseTab_Execute, CloseTab_CanExecute));
+            CommandBindings.Add(new CommandBinding(SwitchTabCmd, SwitchTab_Execute, SwitchTab_CanExecute));
+            CommandBindings.Add(new CommandBinding(QuickOpenCmd, QuickOpen_Execute));
+            CommandBindings.Add(new CommandBinding(FindInChatCmd, FindInChat_Execute));
+            CommandBindings.Add(new CommandBinding(CommandPaletteCmd, CommandPalette_Execute));
+            CommandBindings.Add(new CommandBinding(ExportSessionCmd, ExportSession_Execute, ExportSession_CanExecute));
+            CommandBindings.Add(new CommandBinding(OpenSettingsCmd, OpenSettings_Execute, OpenSettings_CanExecute));
+            CommandBindings.Add(new CommandBinding(ToggleTerminalCmd, ToggleTerminal_Execute));
+
             _timer.Tick += OnTick;
             Loaded += (_, _) =>
             {
@@ -130,6 +143,14 @@ namespace ClaudeCodeGUI
                 ProjectSidebarCtrl.SessionActivated += Sidebar_SessionActivated;
                 ProjectSidebarCtrl.SessionDeleted += Sidebar_SessionDeleted;
                 ProjectSidebarCtrl.SessionRenamed += Sidebar_SessionRenamed;
+
+                // ═══ IDE panel event subscriptions ═══
+                if (FindName("SearchPanelCtrl") is SearchPanel sp)
+                    sp.OpenFileRequested += (_, args) => OpenCodeViewer(args.filePath, args.lineNumber);
+                if (FindName("FilesSidebarCtrl") is FilesSidebar fs)
+                    fs.FileActivated += (_, filePath) => OpenCodeViewer(filePath);
+                if (FindName("ProblemsCtrl") is ProblemsPanel pp)
+                    pp.ProblemDoubleClicked += (_, args) => OpenCodeViewer(args.filePath, args.lineNumber);
 
                 // ═══ Auto-detect Claude CLI at startup ═══
                 // (the old Browse→DoStartSession flow is gone with the collapsed toolbar)
@@ -408,8 +429,8 @@ namespace ClaudeCodeGUI
         /// <summary>切换侧边栏到技能标签</summary>
         private void SidebarTabSkills_Click(object sender, RoutedEventArgs e)
         {
-            if (_sidebarTabIsSkills) return;
-            _sidebarTabIsSkills = true;
+            if (_sidebarTabIndex == 0) return;
+            _sidebarTabIndex = 0;
             UpdateSidebarTabUI();
             SidebarActions.Children[0].Visibility = Visibility.Visible; // SkillAddBtn
             SidebarActions.Children[1].Visibility = Visibility.Visible; // SkillFolderBtn
@@ -421,8 +442,8 @@ namespace ClaudeCodeGUI
         /// <summary>切换侧边栏到项目标签</summary>
         private void SidebarTabProjects_Click(object sender, RoutedEventArgs e)
         {
-            if (!_sidebarTabIsSkills) return;
-            _sidebarTabIsSkills = false;
+            if (_sidebarTabIndex == 1) return;
+            _sidebarTabIndex = 1;
             UpdateSidebarTabUI();
             SidebarActions.Children[0].Visibility = Visibility.Collapsed; // SkillAddBtn
             SidebarActions.Children[1].Visibility = Visibility.Collapsed; // SkillFolderBtn
@@ -431,30 +452,63 @@ namespace ClaudeCodeGUI
             SidebarActions.Children[4].Visibility = Visibility.Visible;   // ProjectAddBtn
         }
 
+        /// <summary>切换侧边栏到文件标签</summary>
+        private void SidebarTabFiles_Click(object sender, RoutedEventArgs e)
+        {
+            if (_sidebarTabIndex == 2) return;
+            _sidebarTabIndex = 2;
+            UpdateSidebarTabUI();
+            foreach (UIElement child in SidebarActions.Children)
+                child.Visibility = Visibility.Collapsed;
+
+            // 自动加载当前工作目录
+            var dir = _session.WorkingDirectory;
+            if (!string.IsNullOrEmpty(dir) && System.IO.Directory.Exists(dir))
+                FilesSidebarCtrl.LoadDirectory(dir);
+        }
+
+        /// <summary>切换侧边栏到搜索标签</summary>
+        private void SidebarTabSearch_Click(object sender, RoutedEventArgs e)
+        {
+            if (_sidebarTabIndex == 3) return;
+            _sidebarTabIndex = 3;
+            UpdateSidebarTabUI();
+            foreach (UIElement child in SidebarActions.Children)
+                child.Visibility = Visibility.Collapsed;
+        }
+
+        /// <summary>切换侧边栏到问题标签</summary>
+        private void SidebarTabProblems_Click(object sender, RoutedEventArgs e)
+        {
+            if (_sidebarTabIndex == 4) return;
+            _sidebarTabIndex = 4;
+            UpdateSidebarTabUI();
+            foreach (UIElement child in SidebarActions.Children)
+                child.Visibility = Visibility.Collapsed;
+        }
+
         /// <summary>更新侧边栏标签按钮的视觉样式</summary>
         private void UpdateSidebarTabUI()
         {
-            if (_sidebarTabIsSkills)
+            // Reset all tabs to inactive
+            Border[] tabs = { SidebarSkillsTab, SidebarProjectsTab, SidebarFilesTab, SidebarSearchTab, SidebarProblemsTab };
+            Grid[] panels = { SkillsPanel, ProjectsPanel, FilesPanel, SearchPanelGrid, ProblemsPanelGrid };
+            for (int i = 0; i < tabs.Length; i++)
             {
-                SidebarSkillsTab.Background = H("#2C2C2E");   // active bg
-                ((TextBlock)SidebarSkillsTab.Child).FontWeight = FontWeights.SemiBold;
-                ((TextBlock)SidebarSkillsTab.Child).Foreground = H("#0A84FF"); // accent
-                SidebarProjectsTab.Background = new SolidColorBrush(Colors.Transparent);
-                ((TextBlock)SidebarProjectsTab.Child).FontWeight = FontWeights.Normal;
-                ((TextBlock)SidebarProjectsTab.Child).Foreground = H("#636366"); // muted
-                SkillsPanel.Visibility = Visibility.Visible;
-                ProjectsPanel.Visibility = Visibility.Collapsed;
+                tabs[i].Background = new SolidColorBrush(Colors.Transparent);
+                if (tabs[i].Child is TextBlock tb)
+                {
+                    tb.FontWeight = FontWeights.Normal;
+                    tb.Foreground = H("#636366");
+                }
+                panels[i].Visibility = i == _sidebarTabIndex ? Visibility.Visible : Visibility.Collapsed;
             }
-            else
+            // Highlight active tab
+            tabs[_sidebarTabIndex].Background = H("#2C2C2E");
+            if (tabs[_sidebarTabIndex].Child is TextBlock activeTb)
             {
-                SidebarSkillsTab.Background = new SolidColorBrush(Colors.Transparent);
-                ((TextBlock)SidebarSkillsTab.Child).FontWeight = FontWeights.Normal;
-                ((TextBlock)SidebarSkillsTab.Child).Foreground = H("#636366");
-                SidebarProjectsTab.Background = H("#2C2C2E");
-                ((TextBlock)SidebarProjectsTab.Child).FontWeight = FontWeights.SemiBold;
-                ((TextBlock)SidebarProjectsTab.Child).Foreground = H("#0A84FF");
-                SkillsPanel.Visibility = Visibility.Collapsed;
-                ProjectsPanel.Visibility = Visibility.Visible;
+                activeTb.FontWeight = FontWeights.SemiBold;
+                activeTb.Foreground = H("#0A84FF");
             }
         }
 
@@ -616,7 +670,7 @@ namespace ClaudeCodeGUI
             StatusBar.Text = $"已添加项目：{pname}";
 
             // Switch to projects tab
-            if (_sidebarTabIsSkills)
+            if (_sidebarTabIndex == 0)
                 SidebarTabProjects_Click(null!, null!);
         }
 
@@ -676,6 +730,9 @@ namespace ClaudeCodeGUI
 
             _sessionManager.ActivateTab(tab);
             StatusBar.Text = $"打开会话：{project.Name}/{session.Name}";
+            UpdateStatusBarProjectPath();
+            UpdateStatusBarGitStatus();
+            UpdateStatusBarModel();
         }
 
         /// <summary>从项目树删除会话 → 关闭关联标签</summary>
@@ -718,6 +775,86 @@ namespace ClaudeCodeGUI
                 }
             }
             catch (Exception ex) { SysLine("无法打开新窗口：" + ex.Message, BrRed); }
+        }
+
+        // ════════════════════════════════════════════════════════
+        //  STATUS BAR
+        // ════════════════════════════════════════════════════════
+
+        private void UpdateStatusBarProjectPath()
+        {
+            var dir = _session.WorkingDirectory;
+            ProjectPathLabel.Text = !string.IsNullOrEmpty(dir) ? Path.GetFileName(dir) : "";
+        }
+
+        private void UpdateStatusBarModel()
+        {
+            ModelLabel.Text = _session.SelectedModel ?? "";
+            ModeLabel.Text = _session.Mode == InteractionMode.Build ? "Build" : "Plan";
+        }
+
+        private async void UpdateStatusBarGitStatus()
+        {
+            var dir = _session.WorkingDirectory;
+            if (string.IsNullOrEmpty(dir) || !GitService.IsGitRepository(dir))
+            {
+                GitBranchLabel.Text = "";
+                GitChangesLabel.Text = "";
+                return;
+            }
+            try
+            {
+                var branch = await Task.Run(() => GitService.GetCurrentBranch(dir));
+                var (staged, unstaged) = await Task.Run(() => GitService.GetStatusCount(dir));
+                GitBranchLabel.Text = branch;
+                if (staged > 0 && unstaged > 0) GitChangesLabel.Text = $"{staged}/{unstaged}";
+                else if (staged > 0) GitChangesLabel.Text = $"{staged}↑";
+                else if (unstaged > 0) GitChangesLabel.Text = $"{unstaged}✗";
+                else GitChangesLabel.Text = "";
+            }
+            catch { GitBranchLabel.Text = ""; GitChangesLabel.Text = ""; }
+        }
+
+        // ════════════════════════════════════════════════════════
+        //  TERMINAL PANEL
+        // ════════════════════════════════════════════════════════
+
+        private void TerminalClose_Click(object sender, RoutedEventArgs e)
+        {
+            TerminalPanel.Visibility = Visibility.Collapsed;
+        }
+
+        private void ToggleTerminal_Execute(object sender, ExecutedRoutedEventArgs e)
+        {
+            TerminalPanel.Visibility = TerminalPanel.Visibility == Visibility.Visible
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+            if (TerminalPanel.Visibility == Visibility.Visible)
+                TerminalContent.ScrollToEnd();
+        }
+
+        public void AppendToTerminal(string text)
+        {
+            if (TerminalPanel.Visibility != Visibility.Visible)
+                TerminalPanel.Visibility = Visibility.Visible;
+            TerminalText.Text += text;
+            TerminalContent.ScrollToEnd();
+        }
+
+        // ════════════════════════════════════════════════════════
+        //  CODE VIEWER
+        // ════════════════════════════════════════════════════════
+
+        private void CodeViewer_CloseRequested(object sender, EventArgs e)
+        {
+            CodeViewerPanel.Visibility = Visibility.Collapsed;
+        }
+
+        private void OpenCodeViewer(string filePath, int? lineNumber = null)
+        {
+            if (!File.Exists(filePath)) return;
+            CodeViewerPanel.Visibility = Visibility.Visible;
+            CodeViewerCtrl.LoadFile(filePath, lineNumber);
         }
     }
 }

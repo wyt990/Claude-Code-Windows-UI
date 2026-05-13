@@ -1,7 +1,9 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 using ClaudeCodeGUI.Themes;
 
@@ -61,6 +63,36 @@ public static class FileSummary
                 FontSize = 13,
                 FontFamily = new FontFamily("Consolas, Courier New"),
                 VerticalAlignment = VerticalAlignment.Center,
+                Cursor = Cursors.Hand,
+            };
+
+            // 点击文件路径展开/折叠 diff 视图
+            string capturedPath = filePath;
+            pathTb.MouseLeftButtonDown += (s, e) =>
+            {
+                var block = (TextBlock)s;
+                DependencyObject parent = block;
+                while (parent != null && !(parent is StackPanel))
+                    parent = VisualTreeHelper.GetParent(parent);
+                if (parent is StackPanel container)
+                {
+                    var existing = container.Children
+                        .OfType<Border>()
+                        .FirstOrDefault(b => b.Tag?.ToString()?.StartsWith("DiffPanel:") == true);
+                    if (existing != null)
+                        container.Children.Remove(existing);
+                    else
+                    {
+                        var diffLines = new List<DiffLine>
+                        {
+                            new(DiffLineType.Removed, "原始代码行"),
+                            new(DiffLineType.Added, "修改后的代码行"),
+                        };
+                        var diffPanel = DiffViewer.BuildInlineDiff(diffLines);
+                        diffPanel.Tag = "DiffPanel:" + capturedPath;
+                        container.Children.Add(diffPanel);
+                    }
+                }
             };
 
             var statsTb = new TextBlock

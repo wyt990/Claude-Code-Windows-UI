@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace ClaudeCodeGUI;
@@ -493,4 +494,84 @@ public partial class MainWindow : Window
             _attachedImagePath = null;
         }
     }
+
+        // ════════════════════════════════════════════════════════
+        //  STATIC COMMAND DEFINITIONS
+        // ════════════════════════════════════════════════════════
+
+        public static readonly RoutedCommand NewSessionCmd = new();
+        public static readonly RoutedCommand CloseTabCmd = new();
+        public static readonly RoutedCommand SwitchTabCmd = new();
+        public static readonly RoutedCommand QuickOpenCmd = new();
+        public static readonly RoutedCommand FindInChatCmd = new();
+        public static readonly RoutedCommand CommandPaletteCmd = new();
+        public static readonly RoutedCommand ExportSessionCmd = new();
+        public static readonly RoutedCommand OpenSettingsCmd = new();
+        public static readonly RoutedCommand ToggleTerminalCmd = new();
+
+        private void NewSession_Execute(object sender, ExecutedRoutedEventArgs e)
+        {
+            AddTab_Click(null!, null!);
+        }
+        private void NewSession_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = _sessionManager != null;
+        }
+        private void CloseTab_Execute(object sender, ExecutedRoutedEventArgs e)
+        {
+            var tabs = _sessionManager?.Tabs;
+            if (tabs == null || tabs.Count <= 1) return;
+            var current = _sessionManager?.ActiveTab;
+            if (current != null) _sessionManager?.CloseTab(current);
+        }
+        private void CloseTab_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = _sessionManager?.Tabs?.Count > 1;
+        }
+        private void SwitchTab_Execute(object sender, ExecutedRoutedEventArgs e)
+        {
+            var tabs = _sessionManager?.Tabs;
+            if (tabs == null || tabs.Count < 2) return;
+            var current = _sessionManager?.ActiveTab;
+            if (current == null) return;
+            var idx = tabs.IndexOf(current);
+            _sessionManager?.ActivateTab(tabs[(idx + 1) % tabs.Count]);
+        }
+        private void SwitchTab_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = _sessionManager?.Tabs?.Count > 1;
+        }
+        private void QuickOpen_Execute(object sender, ExecutedRoutedEventArgs e)
+        {
+            StatusBar.Text = "快速打开功能开发中...";
+            if (_sidebarTabIndex != 2) SidebarTabFiles_Click(null!, null!);
+        }
+        private void FindInChat_Execute(object sender, ExecutedRoutedEventArgs e)
+        {
+            StatusBar.Text = "聊天搜索功能开发中...";
+        }
+        private void CommandPalette_Execute(object sender, ExecutedRoutedEventArgs e)
+        {
+            var palette = new CommandPaletteWindow();
+            palette.Owner = this;
+            palette.ShowDialog();
+        }
+        private void ExportSession_Execute(object sender, ExecutedRoutedEventArgs e)
+        {
+            StatusBar.Text = "导出功能开发中...";
+        }
+        private void ExportSession_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = _sessionTabTimeline?.Entries.Count > 0;
+        }
+        private void OpenSettings_Execute(object sender, ExecutedRoutedEventArgs e)
+        {
+            var settings = new SettingsWindow();
+            settings.ShowDialog();
+        }
+        private void OpenSettings_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = true;
+        }
 }
+
