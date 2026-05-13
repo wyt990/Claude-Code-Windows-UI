@@ -14,8 +14,8 @@ public partial class MainWindow : Window
 {
     private void ShowWelcome()
     {
-        var b = Bubble(BrBgAst, BrBdrA);
-        var p = (StackPanel)b.Child;
+        var b = Bubble(BrBgAst, BrBdrA, false);
+        var p = GetContentPanel(b);
         p.Children.Add(new TextBlock
         {
             Text = "Claude Code  ·  GUI Shell",
@@ -35,6 +35,8 @@ public partial class MainWindow : Window
                 TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 1, 0, 1)
             });
         ChatPanel.Children.Add(b);
+        SetBubbleMaxWidth(b);
+        HookBubbleWidthResize();
     }
 
     // ── 基于 TimelineModel 的渲染 ─────────────────────────
@@ -47,8 +49,13 @@ public partial class MainWindow : Window
         {
             var element = CreateBubbleFromEntry(entry);
             if (element != null)
+            {
                 ChatPanel.Children.Add(element);
+                if (element is Border b)
+                    SetBubbleMaxWidth(b);
+            }
         }
+        HookBubbleWidthResize();
         OutputScroller.ScrollToBottom();
     }
 
@@ -81,8 +88,8 @@ public partial class MainWindow : Window
         bool isUser = entry.Role == "user";
         var b = Bubble(
             isUser ? BrBgUser : BrBgAst,
-            isUser ? BrBdrH : BrBdrA);
-        var p = (StackPanel)b.Child;
+            isUser ? BrBdrH : BrBdrA, isUser);
+        var p = GetContentPanel(b);
 
         // 头部：角色 + 时间
         var hdr = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 6) };
@@ -185,8 +192,8 @@ public partial class MainWindow : Window
         var entry = _sessionTabTimeline?.AddUserMessage(text);
 
         // 渲染
-        var b = Bubble(BrBgUser, BrBdrH);
-        var p = (StackPanel)b.Child;
+        var b = Bubble(BrBgUser, BrBdrH, true);
+        var p = GetContentPanel(b);
         var hdr = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 6) };
         hdr.Children.Add(new TextBlock
         {
@@ -208,6 +215,8 @@ public partial class MainWindow : Window
                 TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 1, 0, 0)
             });
         ChatPanel.Children.Add(b); OutputScroller.ScrollToBottom();
+        SetBubbleMaxWidth(b);
+        HookBubbleWidthResize();
 
         // 操作按钮 + 入场动画
         BubbleActions.AddActions(p, () => text, true, () => { InputBox.Text = text; _ = RunAsync(); });
@@ -253,8 +262,8 @@ public partial class MainWindow : Window
         // 写入 TimelineModel（流式状态）
         var entry = _sessionTabTimeline?.AddAssistantMessage();
 
-        var b = Bubble(BrBgAst, BrBdrA);
-        var p = (StackPanel)b.Child;
+        var b = Bubble(BrBgAst, BrBdrA, false);
+        var p = GetContentPanel(b);
         var hdr = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 6) };
         hdr.Children.Add(new TextBlock
         {
@@ -283,6 +292,8 @@ public partial class MainWindow : Window
         };
         p.Children.Add(tb);
         ChatPanel.Children.Add(b); OutputScroller.ScrollToBottom();
+        SetBubbleMaxWidth(b);
+        HookBubbleWidthResize();
 
         // 将 entry ID 保存在 TextBlock Tag 中，方便流式完成后回填
         if (entry != null)
@@ -319,8 +330,8 @@ public partial class MainWindow : Window
 
         var b = Bubble(
             role == "user" ? BrBgUser : BrBgAst,
-            role == "user" ? BrBdrH : BrBdrA);
-        var p = (StackPanel)b.Child;
+            role == "user" ? BrBdrH : BrBdrA, role == "user");
+        var p = GetContentPanel(b);
 
         var hdr = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 6) };
         hdr.Children.Add(new TextBlock
@@ -426,11 +437,50 @@ public partial class MainWindow : Window
 
     // ── 气泡工厂 ─────────────────────────────────────────
 
-    private static Border Bubble(SolidColorBrush bg, SolidColorBrush bdr) =>
-        new Border
+    private static Border Bubble(SolidColorBrush bg, SolidColorBrush bdr, bool isUser = false)
+    {
+        var grid = new Grid();
+        var contentPanel = new StackPanel();
+        grid.Children.Add(contentPanel);
+        return new Border
         {
             Background = bg, BorderBrush = bdr, BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(10), Margin = new Thickness(12, 4, 12, 4),
-            Padding = new Thickness(14, 10, 14, 10), Child = new StackPanel()
+            Padding = new Thickness(14, 10, 14, 10), Child = grid,
+            HorizontalAlignment = isUser ? HorizontalAlignment.Right : HorizontalAlignment.Left,
         };
+    }
+
+    private static StackPanel GetContentPanel(Border b)
+    {
+        if (b.Child is Grid g && g.Children[0] is StackPanel sp)
+            return sp;
+        return (StackPanel)b.Child; // fallback
+    }
+
+    private void SetBubbleMaxWidth(Border b)
+    {
+        double w = ChatPanel.ActualWidth;
+        if (w > 0)
+            b.MaxWidth = w * 0.9;
+    }
+
+    private void UpdateAllBubbleMaxWidths()
+    {
+        double w = ChatPanel.ActualWidth * 0.9;
+        foreach (var child in ChatPanel.Children)
+        {
+            if (child is Border b)
+                b.MaxWidth = w;
+        }
+    }
+
+    private bool _bubbleWidthHooked;
+
+    private void HookBubbleWidthResize()
+    {
+        if (_bubbleWidthHooked) return;
+        _bubbleWidthHooked = true;
+        OutputScroller.SizeChanged += (_, _) => UpdateAllBubbleMaxWidths();
+    }
 }

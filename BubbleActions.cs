@@ -28,12 +28,12 @@ public static class BubbleActions
         var actionsBar = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Margin = new Thickness(0, 6, 0, 0),
+            HorizontalAlignment = isUser ? HorizontalAlignment.Left : HorizontalAlignment.Right,
+            Margin = new Thickness(0),
             Visibility = Visibility.Collapsed,
         };
 
-        // 复制按钮（先 null 初始化再赋值，避免 lambda 捕获前未赋值）
+        // 复制按钮
         Border copyBtn = null!;
         copyBtn = BuildActionButton("复制", (_, _) =>
         {
@@ -53,7 +53,7 @@ public static class BubbleActions
                 };
                 timer.Start();
             }
-            catch { /* clipboard access denied */ }
+            catch { }
         });
         actionsBar.Children.Add(copyBtn);
 
@@ -64,12 +64,26 @@ public static class BubbleActions
             actionsBar.Children.Add(retryBtn);
         }
 
-        panel.Children.Add(actionsBar);
-
-        // 查找气泡的外层 Border（优先使用显式传入的 Border，避免视觉树查找失败）
+        // 查找气泡的外层 Border
         bubbleBorder ??= FindParentBorder(panel);
         if (bubbleBorder == null) return;
 
+        // 利用 Grid 单单元格 overlay 实现浮层按钮（不占用布局高度）
+        bool useOverlay = false;
+        if (panel.Parent is Grid grid && grid.Children.Count >= 1)
+        {
+            // 移除之前的 Margin.Top，确保按钮浮在左下角不改变气泡高度
+            actionsBar.VerticalAlignment = VerticalAlignment.Bottom;
+            actionsBar.Background = new SolidColorBrush(Color.FromArgb(220, 0x0D, 0x11, 0x17));
+            grid.Children.Add(actionsBar);
+            useOverlay = true;
+        }
+
+        // fallback：非 Grid 结构时追加到面板（会改变高度，但保持可用）
+        if (!useOverlay)
+            panel.Children.Add(actionsBar);
+
+        // 悬停显示/隐藏
         bubbleBorder.MouseEnter += (_, _) => actionsBar.Visibility = Visibility.Visible;
         bubbleBorder.MouseLeave += (_, _) => actionsBar.Visibility = Visibility.Collapsed;
     }
