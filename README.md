@@ -32,7 +32,7 @@
   npm install -g @anthropic-ai/claude-code
   ```
   或使用 [claude.com/download](https://claude.com/download) 上的本地安装程序
-- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)（从源码构建时需要）
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)（从源码构建时需要）
 
 ## 快速开始
 
@@ -116,7 +116,7 @@ ClaudeCodeUI/
 ├── Themes/
 │   └── AppStyles.xaml         # 完整主题系统（6 套主题）
 ├── img/                       # 应用图标
-└── ClaudeCodeUI.csproj        # .NET 9 项目文件
+└── ClaudeCodeUI.csproj        # .NET 10 项目文件
 ```
 
 ## 工作原理
